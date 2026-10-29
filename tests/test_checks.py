@@ -287,6 +287,67 @@ def test_control_checks_fail_when_controls_are_hits(tmp_path):
     assert rc != 0 and ("not calibrated" in out or "shifted" in out)
 
 
+SG_COLS = ["sgrna", "Gene", "control_count", "treatment_count", "control_mean",
+           "treat_mean", "LFC", "control_var", "adj_var", "score", "p.low",
+           "p.high", "p.twosided", "FDR", "high_in_treatment"]
+
+
+def sgrna_summary(tmp_path, guides, name="sg.txt"):
+    """guides: list of (sgrna, gene, p_twosided, fdr)."""
+    lines = ["\t".join(SG_COLS)]
+    for sg, gene, p, fdr in guides:
+        row = dict.fromkeys(SG_COLS, "0")
+        row.update({"sgrna": sg, "Gene": gene, "p.twosided": str(p),
+                    "FDR": str(fdr), "high_in_treatment": "False"})
+        lines.append("\t".join(row[c] for c in SG_COLS))
+    return write(tmp_path / name, "\n".join(lines) + "\n")
+
+
+def test_control_checks_read_the_null_from_sgrna_summary(tmp_path):
+    """--control-sgrna keeps controls out of gene_summary (MAGeCK skips them as
+    genes); the per-guide file still scores them."""
+    genes = {"ACE2": {"pos|fdr": "0.001", "pos|p-value": "1e-6"}}
+    for g in ["RPL9", "RPS19", "POLR2A"]:
+        genes[g] = {"neg|fdr": "0.001", "neg|p-value": "1e-6"}
+    gs = gene_summary(tmp_path, genes)                 # no Control_* rows
+    # 20 control guides, p.twosided roughly uniform, none passing FDR
+    guides = [(f"Control_{i:02d}_sg1", f"Control_{i:02d}",
+               round(0.05 + i * 0.047, 3), 0.9) for i in range(1, 21)]
+    sg = sgrna_summary(tmp_path, guides)
+    ctrl_list = write(tmp_path / "ctrl_sg.txt",
+                      "".join(g[0] + "\n" for g in guides))
+    ess = write(tmp_path / "ess.txt", "RPL9\nRPS19\nPOLR2A\n")
+    rc, out = run("control_checks.py", "--gene-summary", gs,
+                  "--sgrna-summary", sg, "--control-sgrna-list", ctrl_list,
+                  "--essential-genes", ess, "--out", tmp_path / "cc.tsv")
+    assert rc == 0, out
+    assert "control sgRNAs: 20" in out
+
+
+def test_control_checks_fail_on_hot_null_in_sgrna_summary(tmp_path):
+    genes = {"ACE2": {"pos|fdr": "0.001"}}
+    gs = gene_summary(tmp_path, genes)
+    # half the control guides pass FDR: the null is not calibrated
+    guides = [(f"Control_{i:02d}_sg1", f"Control_{i:02d}",
+               0.001 if i <= 10 else 0.6, 0.001 if i <= 10 else 0.9)
+              for i in range(1, 21)]
+    sg = sgrna_summary(tmp_path, guides)
+    ctrl_list = write(tmp_path / "ctrl_sg.txt",
+                      "".join(g[0] + "\n" for g in guides))
+    rc, out = run("control_checks.py", "--gene-summary", gs,
+                  "--sgrna-summary", sg, "--control-sgrna-list", ctrl_list,
+                  "--out", tmp_path / "cc.tsv")
+    assert rc != 0 and ("not calibrated" in out or "shifted" in out)
+
+
+def test_control_checks_fail_when_controls_are_nowhere(tmp_path):
+    """No controls as genes and no per-guide file: the null is uncheckable."""
+    gs = gene_summary(tmp_path, {"ACE2": {"pos|fdr": "0.001"}})
+    rc, out = run("control_checks.py", "--gene-summary", gs,
+                  "--out", tmp_path / "cc.tsv")
+    assert rc != 0 and "no controls found" in out
+
+
 def test_control_checks_fail_when_essentials_do_not_deplete(tmp_path):
     genes = {}
     for g in ["RPL9", "RPS19", "POLR2A"]:

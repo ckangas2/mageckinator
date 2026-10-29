@@ -7,8 +7,9 @@ process CONTROL_CHECKS {
     publishDir "${params.outdir}/qc", mode: params.publish_dir_mode
 
     input:
-    tuple val(id), val(selection), path(gene_summary)
+    tuple val(id), val(selection), path(gene_summary), path(sgrna_summary)
     path control_genes
+    path control_sgrnas
     path essential_genes
 
     output:
@@ -19,8 +20,10 @@ process CONTROL_CHECKS {
     """
     control_checks.py \\
         --gene-summary ${gene_summary} \\
+        --sgrna-summary ${sgrna_summary} \\
         --control-genes '${params.control_genes}' \\
         --control-genes-list ${control_genes} \\
+        --control-sgrna-list ${control_sgrnas} \\
         --fdr ${params.fdr} \\
         --max-control-hit-frac ${params.max_control_hit_frac} \\
         --min-control-median-p ${params.min_control_median_p} ${ess} \\
@@ -31,7 +34,9 @@ process CONTROL_CHECKS {
     stub:
     """
     control_checks.py --gene-summary ${gene_summary} \\
+        --sgrna-summary ${sgrna_summary} \\
         --control-genes-list ${control_genes} \\
+        --control-sgrna-list ${control_sgrnas} \\
         --max-control-hit-frac 1.0 --min-control-median-p 0.0 \\
         --out ${id}.control_checks.tsv
     """

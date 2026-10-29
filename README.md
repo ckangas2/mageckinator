@@ -126,10 +126,12 @@ nontargeting sgRNAs as the normaliser, so a global shift in the targeting
 guides (which a killing screen produces) does not drag the null with it. The
 control list is fixed once, by `VALIDATE_LIBRARY`, not re-derived per step.
 
-**The null is a check, not decoration.** Nontargeting controls are carried as
-pseudo-genes so they get gene-level scores, and `CONTROL_CHECKS` requires them
-to behave like a null — roughly uniform p-values, essentially none passing
-FDR. A screen whose controls are "hits" has a miscalibrated FDR, and no gene
+**The null is a check, not decoration.** `CONTROL_CHECKS` requires the
+nontargeting guides to behave like a null — roughly uniform two-sided
+p-values, essentially none passing FDR. Under `--control-sgrna` MAGeCK uses
+those guides as the null and skips them as genes, so the check reads them from
+`sgrna_summary.txt`, which scores every control guide, rather than from
+`gene_summary.txt`, where they are absent. A screen whose controls are "hits" has a miscalibrated FDR, and no gene
 in it can be trusted, however good its rank.
 
 **A positive control, when a list is given.** In a proliferation or survival
@@ -212,8 +214,8 @@ python3 tests/check_test_results.py results
 
 ## Status
 
-- [x] Unit tests (17) pass; stub run completes, and design/library failures stop it before counting
-- [x] Synthetic screen recovers the planted host factors, essentials and null (local gate checks)
-- [ ] `-profile test,docker` end to end in CI, plus the five negative cases
+- [x] Unit tests (20) pass; `nextflow lint` clean on 26.10.4; stub run completes, and design/library failures stop it before counting
+- [x] `-profile test,docker` end to end locally (Nextflow 26.10.4): real MAGeCK recovers all 8 planted host factors (pos FDR<0.05), all 8 essentials depleted, controls null, published recall 1.00
+- [ ] The same in CI, plus the five negative cases
 - [ ] Container build and conda solve in CI
 - [ ] GSE158298 run; RRA hits vs `assets/daniloski_hits.tsv`; control calibration; reconciliation → RESULTS.md

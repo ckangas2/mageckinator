@@ -149,18 +149,21 @@ workflow main_flow {
     def essential = isSet(params.essential_genes) ?
         file(params.essential_genes, checkIfExists: true) : file("${projectDir}/assets/NO_FILE")
     CONTROL_CHECKS(MAGECK_TEST.out.gene_summary,
-                   VALIDATE_LIBRARY.out.control_genes, essential)
+                   VALIDATE_LIBRARY.out.control_genes,
+                   VALIDATE_LIBRARY.out.control_sgrnas, essential)
 
     // ---- reconcile against the published hits (optional)
     if (isSet(params.published_hits)) {
-        RECONCILE(MAGECK_TEST.out.gene_summary,
+        RECONCILE(MAGECK_TEST.out.gene_summary.map { id, sel, gene, _sg ->
+                      tuple(id, sel, gene)
+                  },
                   file(params.published_hits, checkIfExists: true))
     }
 
     // ---- run-level tables
     def gs       = MAGECK_TEST.out.gene_summary
-    def gs_files = gs.map { _id, _sel, f -> f }.collect()
-    def gs_args  = gs.map { id, _sel, f -> "${id}=${f.name}" }.collect()
+    def gs_files = gs.map { _id, _sel, f, _sg -> f }.collect()
+    def gs_args  = gs.map { id, _sel, f, _sg -> "${id}=${f.name}" }.collect()
     COLLECT_SUMMARY(COUNT_QC.out.qc, CHECK_DESIGN.out.comparisons, gs_files, gs_args)
 
     COLLECT_SUMMARY.out.comparisons.subscribe { _f ->

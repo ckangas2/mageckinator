@@ -11,8 +11,11 @@ process MAGECK_TEST {
     path control_sgrnas
 
     output:
-    tuple val(id), val(selection), path("${id}.gene_summary.txt"), emit: gene_summary
-    path "${id}.sgrna_summary.txt",                                emit: sgrna_summary
+    // sgrna_summary travels with gene_summary: under --control-sgrna the
+    // control guides are the null and are skipped as genes, so the per-guide
+    // file is where CONTROL_CHECKS reads the null from.
+    tuple val(id), val(selection), path("${id}.gene_summary.txt"),
+          path("${id}.sgrna_summary.txt"), emit: gene_summary
     path "${id}.log",                                              emit: log, optional: true
 
     script:

@@ -9,10 +9,18 @@ error. Two internal controls say whether the numbers mean anything:
 
   negative control -- nontargeting guides.
     They target nothing, so they must behave like the null: roughly uniform
-    p-values, and essentially none passing FDR. If control "genes" are showing
-    up as hits, the normalisation or the counts are off and every FDR in the
-    file is optimistic. (Requires the library's controls to have been grouped
-    as genes at the `mageck test` step, via --control-sgrna / control genes.)
+    p-values, and essentially none passing FDR. If controls look like hits, the
+    normalisation or the counts are off and every FDR in the file is optimistic.
+
+    Which file this is read from depends on how `mageck test` ran. Under
+    --control-sgrna (the default here: control-normalised, control null) MAGeCK
+    uses the control guides as the null and skips them as genes -- it logs
+    "Skipping gene <id> for permutation" -- so they are absent from
+    gene_summary.txt while each one is still scored in sgrna_summary.txt. That
+    per-guide test is then the one used, and it is the better one: every
+    control guide rather than a handful of pseudo-genes, from the same run
+    being judged. If controls do appear as genes (a run without
+    --control-sgrna), the gene-level test is used instead.
 
   positive control -- known essential genes (optional).
     In a proliferation or survival screen, guides against core-essential genes
@@ -53,6 +61,12 @@ def load_list(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gene-summary", required=True)
+    ap.add_argument("--sgrna-summary", default=None,
+                    help="sgrna_summary.txt from the same run; the control null "
+                         "is read here when --control-sgrna kept the controls "
+                         "out of gene_summary.txt")
+    ap.add_argument("--control-sgrna-list", default=None,
+                    help="file of exact control sgRNA ids, for --sgrna-summary")
     ap.add_argument("--control-genes", default="Control,NonTargeting,NTC",
                     help="comma-separated gene-label prefixes for controls")
     ap.add_argument("--control-genes-list", default=None,
@@ -90,37 +104,65 @@ def main():
     problems = []
     lines = []
 
+    # Controls as genes (a run without --control-sgrna), else per guide.
     control_rows = [r for r in rows if is_control(r["id"])]
-    n_ctrl = len(control_rows)
-    if n_ctrl == 0:
-        problems.append("no control genes found in gene_summary; MAGeCK was not "
-                        "given the controls as genes, so the null cannot be "
-                        "calibrated (see --control-sgrna at the test step)")
-    else:
-        # hits among controls, either direction
-        def passed(r):
-            return (float(col(r, "neg|fdr")) < args.fdr or
-                    float(col(r, "pos|fdr")) < args.fdr)
+    unit = "genes"
+    ctrl_ps, ctrl_hits = [], []
 
-        ctrl_hits = [r["id"] for r in control_rows if passed(r)]
+    if control_rows:
+        for r in control_rows:
+            # Two-sided, so the floor below means the same thing here as it
+            # does for sgrna_summary's p.twosided: min(neg,pos) alone is
+            # uniform on [0, 0.5] under the null and would trip any floor
+            # above 0.25 on a perfectly calibrated screen.
+            one_sided = min(float(col(r, "neg|p-value", default="1")),
+                            float(col(r, "pos|p-value", default="1")))
+            ctrl_ps.append(min(1.0, 2.0 * one_sided))
+            if (float(col(r, "neg|fdr")) < args.fdr or
+                    float(col(r, "pos|fdr")) < args.fdr):
+                ctrl_hits.append(r["id"])
+    elif args.sgrna_summary:
+        # MAGeCK skipped the controls as genes because they were the null;
+        # every control guide is still scored in sgrna_summary.txt.
+        unit = "sgRNAs"
+        sg_rows = read_gene_summary(args.sgrna_summary)
+        if args.control_sgrna_list:
+            ctrl_sg = load_list(args.control_sgrna_list)
+
+            def is_control_sg(row):
+                return row.get("sgrna", "") in ctrl_sg
+        else:
+            def is_control_sg(row):
+                return is_control(row.get("Gene", ""))
+
+        for r in sg_rows:
+            if not is_control_sg(r):
+                continue
+            ctrl_ps.append(float(col(r, "p.twosided", "p.low", default="1")))
+            if float(col(r, "FDR", default="1")) < args.fdr:
+                ctrl_hits.append(r.get("sgrna", "?"))
+
+    n_ctrl = len(ctrl_ps)
+    if n_ctrl == 0:
+        problems.append("no controls found: they are not genes in gene_summary "
+                        "and no --sgrna-summary gave per-guide scores, so the "
+                        "null cannot be calibrated. Check --control_genes "
+                        "matches the library's control labels.")
+    else:
         frac = len(ctrl_hits) / n_ctrl
-        lines.append(f"control genes: {n_ctrl}, below FDR {args.fdr}: "
+        lines.append(f"control {unit}: {n_ctrl}, below FDR {args.fdr}: "
                      f"{len(ctrl_hits)} ({frac:.1%})")
         if frac > args.max_control_hit_frac:
-            problems.append(f"{frac:.1%} of control genes pass FDR {args.fdr} "
+            problems.append(f"{frac:.1%} of control {unit} pass FDR {args.fdr} "
                             f"(max {args.max_control_hit_frac:.0%}), "
                             f"e.g. {ctrl_hits[:5]}: the null is not calibrated")
 
-        # control p-value distribution should not be skewed small
-        ps = []
-        for r in control_rows:
-            ps.append(min(float(col(r, "neg|p-value", default="1")),
-                          float(col(r, "pos|p-value", default="1"))))
-        ps.sort()
-        med = ps[len(ps) // 2]
-        lines.append(f"control median min(neg,pos) p-value: {med:.3f}")
+        # the control p-value distribution must not be skewed small
+        ctrl_ps.sort()
+        med = ctrl_ps[n_ctrl // 2]
+        lines.append(f"control {unit} median p-value: {med:.3f}")
         if med < args.min_control_median_p:
-            problems.append(f"control genes have median p-value {med:.3f} "
+            problems.append(f"control {unit} have median p-value {med:.3f} "
                             f"(min {args.min_control_median_p}): the control "
                             f"distribution is shifted, not uniform")
 
