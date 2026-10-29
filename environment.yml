@@ -1,0 +1,17 @@
+# Software for every pipeline step. Used three ways:
+#   - baked into the Docker image (Dockerfile)
+#   - `-profile conda` builds it on the fly
+#   - `micromamba env create -f environment.yml` for the shell scripts
+name: mageckinator
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.10
+  - mageck=0.5.9.5
+  - numpy=1.26
+  - pandas=2.2
+  - scipy=1.13
+  - procps-ng        # Nextflow's task metrics need `ps`
+  - gzip
+  - aria2            # fast, resumable FASTQ download in scripts/fetch_runs.sh

@@ -1,0 +1,6 @@
+sample,fastq_1,condition,replicate
+Plasmid_rep1,Plasmid_rep1.fastq.gz,Plasmid,1
+Plasmid_rep2,Plasmid_rep2.fastq.gz,Plasmid,2
+HighMOI_rep1,HighMOI_rep1.fastq.gz,HighMOI,1
+HighMOI_rep2,HighMOI_rep2.fastq.gz,HighMOI,2
+HighMOI_rep3,HighMOI_rep3.fastq.gz,HighMOI,3

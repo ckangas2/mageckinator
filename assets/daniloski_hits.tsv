@@ -1,0 +1,32 @@
+# Positive-selection hits reported by Daniloski et al., Cell 2021
+# (GSE158298; A549-ACE2, GeCKOv2, SARS-CoV-2). Genes whose knockout was
+# enriched in the survivor pool, grouped by the mechanism the paper assigns.
+# Used by reconcile.py as the published list to land near. Order is by the
+# paper's emphasis, not a reproduced RRA rank.
+gene	rank
+ACE2	1
+RAB7A	2
+CTSL	3
+ARPC3	4
+ARPC4	5
+ACTR2	6
+ACTR3	7
+ATP6AP1	8
+ATP6AP2	9
+ATP6V0B	10
+ATP6V0C	11
+ATP6V0D1	12
+ATP6V1A	13
+ATP6V1B2	14
+ATP6V1C1	15
+ATP6V1E1	16
+ATP6V1G1	17
+ATP6V1H	18
+TMEM199	19
+TOR1AIP1	20
+VPS35	21
+VPS29	22
+VPS26A	23
+PIK3C3	24
+NPC1	25
+CCDC22	26

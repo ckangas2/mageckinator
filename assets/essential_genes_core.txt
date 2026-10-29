@@ -1,0 +1,25 @@
+# A minimal, uncontroversial core-essential set (ribosome, proteasome, RNA
+# polymerase II, splicing, translation initiation). Used as the positive
+# control: in any proliferation/survival screen these should deplete. This is
+# a short sentinel list, not a benchmark; for a full positive control swap in
+# Hart et al. CEGv2 (--essential_genes CEGv2.txt).
+RPL3
+RPL4
+RPL5
+RPL9
+RPL11
+RPS3
+RPS6
+RPS11
+RPS19
+POLR2A
+POLR2B
+POLR2L
+PSMA1
+PSMB2
+PSMB3
+PSMD1
+EIF3B
+EIF3C
+SNRPD1
+SF3B1

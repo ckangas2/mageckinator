@@ -1,0 +1,3 @@
+id,control,treatment,selection
+highmoi_vs_plasmid,Plasmid,HighMOI,positive
+lowmoi_vs_plasmid,Plasmid,LowMOI,positive
