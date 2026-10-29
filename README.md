@@ -207,10 +207,14 @@ tests/
 
 ```
 bash tests/run_tests.sh                          # unit tests, seconds, no MAGeCK
-nextflow run . -profile test -stub-run           # wiring only, no tools needed
+nextflow run . -profile test,docker -stub-run    # wiring only, no MAGeCK
 nextflow run . -profile test,docker              # end to end
 python3 tests/check_test_results.py results
 ```
+
+`-stub-run` fabricates the MAGeCK outputs but still runs the Python gates, so
+outside a container it needs `numpy` (`pip install numpy pandas`). The unit
+tests need `numpy pandas pytest` and nothing else.
 
 ## Status
 

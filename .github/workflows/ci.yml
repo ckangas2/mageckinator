@@ -53,8 +53,10 @@ jobs:
         if: matrix.nxf == 'latest-stable'
         run: nextflow lint .
 
-      - name: Wiring only (stub), no tools needed
-        run: nextflow run . -profile test -stub-run -c ci.config --outdir stubout
+      # In the container: -stub-run skips MAGeCK but still runs the Python
+      # gates, which need numpy. Outside a container they need it installed.
+      - name: Wiring only (stub), no MAGeCK
+        run: nextflow run . -profile test,docker -stub-run -c ci.config --outdir stubout
 
       - name: Run test profile
         run: nextflow run . -profile test,docker -c ci.config --outdir results
