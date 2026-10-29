@@ -3,7 +3,7 @@
 process MAGECK_TEST {
     tag "${id}"
     label 'process_low'
-    publishDir "${params.outdir}/test/${id}", mode: params.publish_dir_mode
+    publishDir path: { "${params.outdir}/test/${id}" }, mode: params.publish_dir_mode
 
     input:
     tuple val(id), val(control_label), val(treatment_label), val(selection)

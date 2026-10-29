@@ -78,7 +78,7 @@ def validateParams() {
     if (!isSet(params.comparisons)) problems << "--comparisons is required"
     if (!isSet(params.library))     problems << "--library is required"
     if (problems) {
-        problems.each { log.error it }
+        problems.each { msg -> log.error msg }
         error "Fix the parameters above (see --help)."
     }
 }
@@ -88,9 +88,12 @@ def resolvePath(base, String p) {
 }
 
 workflow {
-    if (params.help) { helpMessage(); return }
-    validateParams()
-    main_flow()
+    if (params.help) {
+        helpMessage()
+    } else {
+        validateParams()
+        main_flow()
+    }
 }
 
 workflow main_flow {
@@ -119,8 +122,8 @@ workflow main_flow {
             tuple(row.sample, file(resolvePath(base, row.fastq_1), checkIfExists: true))
         }
         def sorted       = reads.toSortedList { a, b -> a[0] <=> b[0] }
-        def count_files  = sorted.map { lst -> lst.collect { it[1] } }
-        def count_labels = sorted.map { lst -> lst.collect { it[0] }.join(',') }
+        def count_files  = sorted.map { lst -> lst.collect { pair -> pair[1] } }
+        def count_labels = sorted.map { lst -> lst.collect { pair -> pair[0] }.join(',') }
         MAGECK_COUNT(count_files, count_labels,
                      VALIDATE_LIBRARY.out.library, VALIDATE_LIBRARY.out.control_sgrnas)
         counts       = MAGECK_COUNT.out.counts
@@ -156,8 +159,8 @@ workflow main_flow {
 
     // ---- run-level tables
     def gs       = MAGECK_TEST.out.gene_summary
-    def gs_files = gs.map { id, sel, f -> f }.collect()
-    def gs_args  = gs.map { id, sel, f -> "${id}=${f.name}" }.collect()
+    def gs_files = gs.map { _id, _sel, f -> f }.collect()
+    def gs_args  = gs.map { id, _sel, f -> "${id}=${f.name}" }.collect()
     COLLECT_SUMMARY(COUNT_QC.out.qc, CHECK_DESIGN.out.comparisons, gs_files, gs_args)
 
     COLLECT_SUMMARY.out.comparisons.subscribe { _f ->

@@ -16,7 +16,7 @@ process COLLECT_SUMMARY {
     path 'comparisons.tsv',  emit: comparisons
 
     script:
-    def args = gene_summary_args.collect { it.replaceFirst('=', '=gs/') }.join(' ')
+    def args = gene_summary_args.collect { a -> a.replaceFirst('=', '=gs/') }.join(' ')
     """
     collect_summary.py \\
         --count-qc ${count_qc} \\
@@ -30,7 +30,7 @@ process COLLECT_SUMMARY {
     stub:
     """
     collect_summary.py --count-qc ${count_qc} --comparisons ${validated} \\
-        --gene-summary ${gene_summary_args.collect { it.replaceFirst('=', '=gs/') }.join(' ')} \\
+        --gene-summary ${gene_summary_args.collect { a -> a.replaceFirst('=', '=gs/') }.join(' ')} \\
         --out-dir .
     """
 }
